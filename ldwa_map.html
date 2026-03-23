@@ -1,29 +1,69 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LDWA Long Distance Paths</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
-        #map { height: 100vh; width: 100%; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+
         .controls {
-            position: absolute; top: 10px; right: 10px; z-index: 1000;
-            background: white; padding: 12px 16px; border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2); max-width: 320px;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            max-width: 320px;
         }
+
         .controls input {
-            width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;
-            font-size: 14px; margin-bottom: 8px;
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            margin-bottom: 8px;
         }
-        .controls .count { font-size: 12px; color: #666; }
-        .path-popup { font-size: 14px; }
-        .path-popup h3 { margin: 0 0 4px 0; font-size: 15px; }
-        .path-popup p { margin: 2px 0; color: #555; }
+
+        .controls .count {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .path-popup {
+            font-size: 14px;
+        }
+
+        .path-popup h3 {
+            margin: 0 0 4px 0;
+            font-size: 15px;
+        }
+
+        .path-popup p {
+            margin: 2px 0;
+            color: #555;
+        }
     </style>
 </head>
+
 <body>
     <div id="map"></div>
     <div class="controls">
@@ -41,7 +81,18 @@
         }).addTo(map);
 
         let allLayers = [];
+        let highlightedLayer = null;
+        let selectedLayer = null;
+        const defaultStyle = { color: '#d63031', weight: 2.5, opacity: 0.7 };
+        const hoverStyle = { color: '#0984e3', weight: 4, opacity: 1 };
         const pathGroup = L.layerGroup().addTo(map);
+
+        function resetHighlight() {
+            if (highlightedLayer && highlightedLayer !== selectedLayer) {
+                highlightedLayer.setStyle(defaultStyle);
+            }
+            highlightedLayer = null;
+        }
 
         fetch('ldwa_paths.geojson')
             .then(r => r.json())
@@ -53,9 +104,7 @@
                     const coords = feature.geometry.coordinates.map(c => [c[1], c[0]]);
                     const props = feature.properties;
 
-                    const line = L.polyline(coords, {
-                        color: '#d63031', weight: 2.5, opacity: 0.7,
-                    });
+                    const line = L.polyline(coords, defaultStyle);
 
                     line.bindPopup(
                         `<div class="path-popup">
@@ -65,11 +114,31 @@
                     );
 
                     line.on('mouseover', function () {
-                        this.setStyle({ color: '#0984e3', weight: 4, opacity: 1 });
+                        resetHighlight();
+                        this.setStyle(hoverStyle);
                         this.bringToFront();
+                        highlightedLayer = this;
                     });
                     line.on('mouseout', function () {
-                        this.setStyle({ color: '#d63031', weight: 2.5, opacity: 0.7 });
+                        if (this !== selectedLayer) {
+                            this.setStyle(defaultStyle);
+                        }
+                        if (highlightedLayer === this) highlightedLayer = null;
+                    });
+
+                    line.on('popupopen', function () {
+                        if (selectedLayer && selectedLayer !== this) {
+                            selectedLayer.setStyle(defaultStyle);
+                        }
+                        selectedLayer = this;
+                        this.setStyle(hoverStyle);
+                        this.bringToFront();
+                    });
+                    line.on('popupclose', function () {
+                        if (selectedLayer === this) {
+                            this.setStyle(defaultStyle);
+                            selectedLayer = null;
+                        }
                     });
 
                     line.feature = feature;
@@ -95,4 +164,5 @@
         });
     </script>
 </body>
+
 </html>
