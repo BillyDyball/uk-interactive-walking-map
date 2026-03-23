@@ -10,4 +10,3 @@ Path data sourced from the [LDWA Long Distance Paths](https://ldwa.org.uk/ldp/me
 2. Open `ldwa_map.html` in your browser
 
 No build tools or dependencies required — it runs entirely in the browser.
-# uk-interactive-walking-map
