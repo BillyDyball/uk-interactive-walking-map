@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LDWA Long Distance Paths</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        #map { height: 100vh; width: 100%; }
+        .controls {
+            position: absolute; top: 10px; right: 10px; z-index: 1000;
+            background: white; padding: 12px 16px; border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2); max-width: 320px;
+        }
+        .controls input {
+            width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;
+            font-size: 14px; margin-bottom: 8px;
+        }
+        .controls .count { font-size: 12px; color: #666; }
+        .path-popup { font-size: 14px; }
+        .path-popup h3 { margin: 0 0 4px 0; font-size: 15px; }
+        .path-popup p { margin: 2px 0; color: #555; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div class="controls">
+        <input type="text" id="search" placeholder="Search paths..." autocomplete="off" />
+        <div class="count"><span id="visible">0</span> / <span id="total">0</span> paths shown</div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const map = L.map('map').setView([54.0, -2.5], 6);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors',
+            maxZoom: 18,
+        }).addTo(map);
+
+        let allLayers = [];
+        const pathGroup = L.layerGroup().addTo(map);
+
+        fetch('ldwa_paths.geojson')
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('total').textContent = data.features.length;
+                document.getElementById('visible').textContent = data.features.length;
+
+                data.features.forEach(feature => {
+                    const coords = feature.geometry.coordinates.map(c => [c[1], c[0]]);
+                    const props = feature.properties;
+
+                    const line = L.polyline(coords, {
+                        color: '#d63031', weight: 2.5, opacity: 0.7,
+                    });
+
+                    line.bindPopup(
+                        `<div class="path-popup">
+                            <h3>${props.name}</h3>
+                            <p>${props.distance}</p>
+                        </div>`
+                    );
+
+                    line.on('mouseover', function () {
+                        this.setStyle({ color: '#0984e3', weight: 4, opacity: 1 });
+                        this.bringToFront();
+                    });
+                    line.on('mouseout', function () {
+                        this.setStyle({ color: '#d63031', weight: 2.5, opacity: 0.7 });
+                    });
+
+                    line.feature = feature;
+                    allLayers.push(line);
+                    pathGroup.addLayer(line);
+                });
+            });
+
+        // Search filter
+        document.getElementById('search').addEventListener('input', function () {
+            const query = this.value.toLowerCase();
+            let count = 0;
+            pathGroup.clearLayers();
+
+            allLayers.forEach(layer => {
+                if (!query || layer.feature.properties.name.toLowerCase().includes(query)) {
+                    pathGroup.addLayer(layer);
+                    count++;
+                }
+            });
+
+            document.getElementById('visible').textContent = count;
+        });
+    </script>
+</body>
+</html>
